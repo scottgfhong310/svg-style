@@ -49,7 +49,7 @@ svg-style.js（控制器，碰 DOM）
 
 ### 4.1 `index.html`（純結構）
 - 防閃爍開機腳本（`localStorage('svg-style-theme')||'dark'`）。
-- 結構：側欄（src 清單）、空狀態、`#ss-doc`（`.ss-toolbar`：icon + 檔名 + `#ss-doc-badge`「已處理」+ `#ss-preview-seg` 深/淺分段；`#ss-frame` sandbox iframe；`#ss-meta`）、loading、drop-overlay、`#file-picker`（accept `.svg`）、side-tools。
+- 結構：側欄（src 清單）、空狀態、`#ss-doc`（`.ss-toolbar`：icon + 檔名 + `#ss-doc-badge`「已處理」；`#ss-frame` sandbox iframe；`#ss-meta`）、loading、drop-overlay、`#file-picker`（accept `.svg`）、side-tools。預覽 深/淺 由 side-tools `#setting-mode` 控制（toolbar 不放預覽切換）。
 
 ### 4.2 `svg-style.css`（主題 token + 樣式）
 - 家族標準 token（**只管外殼**）+ `--mz-*` 映射。
@@ -70,7 +70,7 @@ svg-style.js（控制器，碰 DOM）
 
 ### 4.4 `svg-style.js`（控制器，碰 DOM）
 - `renderPreview()`：`injectStyle(src,style)` → `buildPreviewSvg(isLight)` → `buildSrcdoc` → `frame.srcdoc`；更新 meta。
-- 預覽 深/淺：`#ss-preview-seg` 分段，`applyPreviewMode()` 重建 srcdoc，存 `localStorage('svg-style-preview')`（預設 light）。**獨立於 app 主題切換。**
+- 預覽 深/淺：**跟隨 app 主題**（side-tools `#setting-mode`）；`isLight = state.theme==='light'`，`toggleTheme` 後 `renderPreview()` 重建 srcdoc。無獨立預覽切換。
 - 上傳 / 拖拉 / 清單（含 processed 徽章）/ `processAll`（src→dist + 更新徽章）/ `downloadCurrent`（blob = `injectStyle` 結果 == dist）/ `clearFolder` / app 主題 / i18n。
 
 ## 5. 關鍵設計決策（與理由 / 替代方案）
@@ -80,7 +80,7 @@ svg-style.js（控制器，碰 DOM）
 3. **冪等注入。** 已含同段樣式（重跑 / 來源已處理）則跳過，避免重複 `<style>`。
 4. **sandbox 預覽（比 html-viewer 更嚴）。** `<iframe sandbox="">`（不給 allow-scripts）；SVG 可含 script，全 sandbox 最安全。原型用 `innerHTML` 直接塞進本頁 DOM（XSS 風險）→ 收斂掉。
 5. **強制 @media 預覽。** 把 `prefers-color-scheme:light` 改寫成 `@media all`/`not all`，預覽不靠系統偏好（沿用原型巧法）。
-6. **預覽 深/淺 獨立於 app 主題。** 工具用途是「驗證淺色自適應」，需要與外殼主題分開切換；各自持久化。
+6. **預覽 深/淺 跟隨 app 主題（side-tools display mode）。** 統一由 `#setting-mode` 控制，少一個控制項、心智更簡單；切主題即重建預覽。（曾做成獨立分段切換，後收斂為跟隨主題。）
 7. **curated rgb 對映。** 覆寫綁 Claude 深色 palette 的精確 `rgb()`；通用深↔淺反轉會毀彩色圖，不採。
 
 ## 6. 與 viewer 系列的關係（家族 §4.7）
@@ -89,7 +89,7 @@ svg-style 與 `xlsx-viewer` 同屬「**核心是純字串運算 → 進 lib**」
 
 ## 7. 主題 / i18n / 安全
 
-- **主題**：app 外殼 CSS 變數 light/dark（預設 dark）；**SVG 預覽 深/淺另存另切**。防閃爍 + materialize-dark。
+- **主題**：app 外殼 CSS 變數 light/dark（預設 dark）；**SVG 預覽 深/淺跟隨此主題**（同一個 `#setting-mode`）。防閃爍 + materialize-dark。
 - **i18n**：引擎 + locales×3，預設 `zh-Hant`；SVG 內容是 **data，永不翻譯**（meta 文字隨語系）。
 - **安全**：sandbox `""`（擋 SVG script）；上傳白名單 `.svg`；`isSafeLink`；後端目標寫死、`{ ok }`、`confirm`。
 

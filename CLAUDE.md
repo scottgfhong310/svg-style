@@ -34,8 +34,8 @@ npm install && node app.js          # → http://localhost:3000/apps/svg-style/
 - **lib 邊界（引擎回字串 → 進 lib）**：`svg-style-lib.js`（`window.SvgStyleLib`，純邏輯、不碰 DOM）裝 `injectStyle`（**冪等**：已含同段樣式則跳過）、`buildPreviewSvg`（把 `@media (prefers-color-scheme:light)` 改寫成 `@media all`/`@media not all` 供強制預覽）、`buildSrcdoc`（sandbox iframe 用 HTML）、`isSafeLink`、`isUploadable(.svg)`、`fileUrl`/`distUrl`、`fetchText`/`fetchStyle`、`uploadFile`/`listFiles`/`processAll`/`clearFolder`、`formatSize`/`timestamp`。
   - **前端 `injectStyle` 與後端 `routes/svg-style.js` 的 `injectStyle` 逐字一致**（同 regex + 同冪等判斷）→ 確保**預覽 === 寫入的 dist**（同 §4.6 thinking-dot 原則）。
 - **控制器** `svg-style.js`（碰 DOM）：上傳 / 拖拉 / 清空、選檔→預覽、批次處理（`/process`）、下載目前檔、app 主題、i18n。
-- **預覽（sandbox）**：`<iframe sandbox>`（**空值＝全 sandbox，不給 allow-scripts**；SVG 不需 script）。`srcdoc` 由 `buildSrcdoc(buildPreviewSvg(injectStyle(src,style), isLight), isLight)` 組出（自帶底色）。預覽 **深/淺 切換獨立於 app 主題**（`localStorage('svg-style-preview')`，預設 light——先展示淺色成果）。
-- **主題**：CSS 變數 light/dark，**預設 dark**（`localStorage('svg-style-theme')`）；防閃爍 + materialize-dark。**注意：app 外殼主題與 SVG 預覽 深/淺 是兩個獨立控制。**
+- **預覽（sandbox）**：`<iframe sandbox>`（**空值＝全 sandbox，不給 allow-scripts**；SVG 不需 script）。`srcdoc` 由 `buildSrcdoc(buildPreviewSvg(injectStyle(src,style), isLight), isLight)` 組出（自帶底色）。預覽 **深/淺 跟隨 app 主題**（side-tools `#setting-mode`）——`isLight = state.theme==='light'`；`toggleTheme` 後呼叫 `renderPreview()` 重建 srcdoc。（無獨立預覽切換。）
+- **主題**：CSS 變數 light/dark，**預設 dark**（`localStorage('svg-style-theme')`）；防閃爍 + materialize-dark。SVG 預覽 深/淺 **跟隨**此主題（同一個 `#setting-mode` 控制）。
 - **side-tool**：`#setting-menu` / `#setting-mode`（app 主題）/ `#setting-lang` / `#setting-process`（`auto_fix_high`，src→dist）/ `#setting-download`（只在開檔時顯示）/ `#setting-clear`（清空，hover 轉紅）；〔正統〕flex `.side-tools`。
 - **i18n**：`i18n.js` + `locales/*.js`，`data-i18n`，預設 `zh-Hant`。SVG 內容是 **data，永不翻譯**。
 - **安全**：sandbox `""` 渲染（擋 SVG 內 script）；上傳白名單 `.svg`；`isSafeLink`；後端操作目標寫死（src/dist）、`{ ok }` 信封、`confirm`；jQuery 3.7.1、後端不依賴 lodash。

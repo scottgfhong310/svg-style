@@ -173,30 +173,6 @@ body.is-empty main {
   padding: 1px 8px;
 }
 
-/* 預覽 深/淺 切換（分段；獨立於 app 主題） */
-.ss-seg {
-  flex: 0 0 auto;
-  display: inline-flex;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.ss-seg button {
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font-size: 12px;
-  padding: 3px 12px;
-  cursor: pointer;
-  line-height: 1.6;
-}
-
-.ss-seg button.active {
-  background: var(--accent);
-  color: var(--bg);
-}
-
 .ss-frame {
   display: block;
   width: 100%;

@@ -17,14 +17,12 @@
 
   var L = window.SvgStyleLib;
   var THEME_KEY = 'svg-style-theme';
-  var PREVIEW_KEY = 'svg-style-preview';   // 預覽 深/淺（獨立於 app 主題）
 
   var emptyState = document.getElementById('empty-state');
   var docBox = document.getElementById('ss-doc');
   var frame = document.getElementById('ss-frame');
   var docName = document.getElementById('ss-doc-name');
   var docBadge = document.getElementById('ss-doc-badge');
-  var previewSeg = document.getElementById('ss-preview-seg');
   var previewMeta = document.getElementById('ss-meta');
   var sideNav = document.getElementById('side-nav');
   var dropOverlay = document.getElementById('drop-overlay');
@@ -33,8 +31,7 @@
   var processBtn = document.getElementById('setting-process');
 
   var state = {
-    theme: 'dark',
-    preview: 'light',   // 預覽模式：'light' 先展示淺色自適應結果（本工具重點）
+    theme: 'dark',      // app 主題；預覽 深/淺 跟隨此值（side-tools display mode）
     current: null,      // 目前選的 src 連結（原始）
     name: '',
     srcText: '',        // 目前 src SVG 原文
@@ -56,20 +53,8 @@
     try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
   }
   function toggleTheme() {
-    applyTheme(state.theme === 'dark' ? 'light' : 'dark');  // 不影響預覽（預覽有自己的 深/淺）
-  }
-
-  /* ---------- 預覽 深/淺（獨立切換） ---------- */
-
-  function applyPreviewMode(mode) {
-    state.preview = mode === 'dark' ? 'dark' : 'light';
-    if (previewSeg) {
-      $(previewSeg).find('button').each(function () {
-        $(this).toggleClass('active', $(this).data('mode') === state.preview);
-      });
-    }
-    try { localStorage.setItem(PREVIEW_KEY, state.preview); } catch (e) {}
-    renderPreview();
+    applyTheme(state.theme === 'dark' ? 'light' : 'dark');
+    renderPreview();   // 預覽跟隨 app 主題（side-tools display mode）→ 重建 srcdoc
   }
 
   /* ---------- 顯示切換 ---------- */
@@ -115,7 +100,7 @@
       previewMeta.textContent = '';
       return;
     }
-    var isLight = state.preview === 'light';
+    var isLight = state.theme === 'light';
     var processed = processedCurrent();
     var previewSvg = L.buildPreviewSvg(processed, isLight);
     frame.srcdoc = L.buildSrcdoc(previewSvg, isLight);
@@ -315,10 +300,6 @@
       filePicker.value = '';
     });
 
-    if (previewSeg) {
-      $(previewSeg).on('click', 'button', function () { applyPreviewMode($(this).data('mode')); });
-    }
-
     document.getElementById('setting-menu').addEventListener('click', function () {
       var inst = M.Sidenav.getInstance(document.getElementById('slide-out')); if (inst) inst.open();
     });
@@ -341,13 +322,6 @@
     var savedTheme = 'dark';
     try { savedTheme = localStorage.getItem(THEME_KEY) || 'dark'; } catch (e) {}
     applyTheme(savedTheme === 'light' ? 'light' : 'dark');
-
-    var savedPrev = 'light';
-    try { savedPrev = localStorage.getItem(PREVIEW_KEY) || 'light'; } catch (e) {}
-    state.preview = savedPrev === 'dark' ? 'dark' : 'light';
-    if (previewSeg) {
-      $(previewSeg).find('button').each(function () { $(this).toggleClass('active', $(this).data('mode') === state.preview); });
-    }
 
     I18n.apply(document);
     document.addEventListener('i18n:changed', onLangChanged);
