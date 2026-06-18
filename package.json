@@ -1,0 +1,23 @@
+{
+  "name": "svg-style",
+  "version": "1.0.0",
+  "description": "把深色 SVG 圖表加上淺色自適應的單頁工具：上傳 SVG → 在 <svg> 後注入 svg-style.txt 的 @media(prefers-color-scheme:light) 覆寫 → sandbox 預覽 → 寫回 dist。輕量 Express 後端（上傳 / 處理 / 清空）。",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "keywords": [
+    "svg",
+    "dark-mode",
+    "prefers-color-scheme",
+    "style-injection",
+    "express",
+    "materialize"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.2",
+    "morgan": "^1.10.0",
+    "multer": "^2.0.0"
+  }
+}

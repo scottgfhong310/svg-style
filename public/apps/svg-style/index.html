@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="dark" class="dark-mode">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <title>SVG Style</title>
+
+  <!-- 防閃爍開機腳本：先依 localStorage 設好 data-theme（預設 dark），同步 toggle dark-mode/light-mode（§5.1）。 -->
+  <script>
+    (function () {
+      var t = 'dark';
+      try { var s = localStorage.getItem('svg-style-theme'); if (s === 'light' || s === 'dark') t = s; } catch (e) {}
+      var r = document.documentElement;
+      r.setAttribute('data-theme', t);
+      r.classList.toggle('dark-mode', t === 'dark');
+      r.classList.toggle('light-mode', t === 'light');
+    })();
+  </script>
+
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" />
+  <link rel="stylesheet" href="./materialize-dark.css" />
+
+  <link rel="stylesheet" href="./svg-style.css" />
+  <link rel="stylesheet" href="./thinking-dot.css" />
+  <link rel="stylesheet" href="./side-tool.css" />
+</head>
+
+<body class="is-empty">
+  <!-- 檔案清單側欄（src） -->
+  <ul id="slide-out" class="sidenav" style="width: 340px;">
+    <li>
+      <a class="subheader">
+        <i class="material-icons">folder_open</i>
+        <span><span id="side-header-label" data-i18n="side.header">Files</span><span
+            class="path">/upload/svg-style</span></span>
+      </a>
+    </li>
+    <li>
+      <div class="divider"></div>
+    </li>
+    <div id="side-nav"></div>
+  </ul>
+
+  <main>
+    <div class="app-container">
+      <!-- 空狀態：可點擊選檔，也接受全頁拖拉 -->
+      <div id="empty-state" class="empty-state">
+        <i class="material-icons">cloud_upload</i>
+        <h5 id="empty-title" data-i18n="empty.title">Drag a .svg anywhere on the page</h5>
+        <div class="hint" id="empty-hint" data-i18n-html="empty.hint">
+          Files are uploaded to <code>/upload/svg-style</code> (same name overwrites);<br />
+          or <u>click to choose a file</u>. Supports <code>.svg</code>.<br />
+          Injects light-mode style → preview → <b>Process</b> writes to <code>dist/</code>.
+        </div>
+      </div>
+
+      <!-- 已選檔：toolbar（檔名 + 已處理徽章 + 預覽深/淺）+ sandbox 預覽 -->
+      <div id="ss-doc">
+        <div class="ss-toolbar">
+          <i class="material-icons ss-doc-icon">image</i>
+          <div class="ss-title"><strong id="ss-doc-name"></strong></div>
+          <span id="ss-doc-badge" class="ss-badge" style="display:none;" data-i18n="badge.processed">Processed</span>
+          <div class="ss-seg" id="ss-preview-seg">
+            <button type="button" data-mode="dark" data-i18n="mode.dark">Dark</button>
+            <button type="button" data-mode="light" class="active" data-i18n="mode.light">Light</button>
+          </div>
+        </div>
+        <!-- 預覽：sandbox iframe（sandbox=""，不給 allow-scripts）；srcdoc 由控制器以 lib 組裝 -->
+        <iframe class="ss-frame" id="ss-frame" sandbox referrerpolicy="no-referrer" title="SVG preview"></iframe>
+        <div class="ss-meta" id="ss-meta"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 載入動畫 -->
+  <div id="loading" aria-hidden="true">
+    <div class="thinking-dot"></div>
+    <div class="loading-text" data-i18n="loading">載入中…</div>
+  </div>
+
+  <!-- 全頁拖拉覆蓋層 -->
+  <div id="drop-overlay">
+    <div class="drop-box">
+      <i class="material-icons">file_download</i>
+      <span id="drop-text" data-i18n="drop.text">Release to upload to /upload/svg-style</span>
+    </div>
+  </div>
+
+  <!-- 隱藏的檔案選擇器 -->
+  <input type="file" id="file-picker" multiple accept=".svg,image/svg+xml" style="display:none;" />
+
+  <!-- ===== 右側工具列（flex 容器自動堆疊，見家族 §5.5） ===== -->
+  <div class="side-tools">
+    <div id="setting-menu" class="side-tool" data-i18n-title="tool.menu" title="檔案清單">
+      <i class="material-icons">folder_open</i>
+    </div>
+    <div id="setting-mode" class="side-tool" data-i18n-title="tool.mode" title="切換 light / dark">
+      <i class="material-icons">dark_mode</i>
+    </div>
+    <div id="setting-lang" class="side-tool" data-i18n-title="tool.lang" title="Language">
+      <i class="material-icons">translate</i>
+    </div>
+    <div id="setting-process" class="side-tool" data-i18n-title="tool.process" title="批次處理 src → dist">
+      <i class="material-icons">auto_fix_high</i>
+    </div>
+    <div id="setting-download" class="side-tool" data-i18n-title="tool.download" title="下載目前檔" style="display:none">
+      <i class="material-icons">file_download</i>
+    </div>
+    <div id="setting-clear" class="side-tool" data-i18n-title="tool.clear" title="清空 src / dist">
+      <i class="material-icons">delete_sweep</i>
+    </div>
+  </div>
+
+  <!-- 依賴：jQuery / Materialize / Lodash / SvgStyleLib -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
+  <script src="./svg-style-lib.js"></script>
+
+  <!-- i18n 引擎 + 語言字典 -->
+  <script src="./i18n.js"></script>
+  <script src="./locales/zh-Hant.js"></script>
+  <script src="./locales/en.js"></script>
+  <script src="./locales/ja.js"></script>
+
+  <script src="./svg-style.js"></script>
+</body>
+
+</html>
