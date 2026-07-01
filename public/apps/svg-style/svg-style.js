@@ -1,15 +1,15 @@
 /**
  * svg-style — 頁面控制器（glue）
  *
- * DOM 行為：app 主題切換、i18n、上傳 / 拖拉 / 清空、選檔→預覽（sandbox iframe）、
- * 預覽 深/淺 切換（獨立於 app 主題）、批次處理 src→dist、下載目前檔。
- * 樣式注入 / @media 改寫 / sandbox 組裝 / 路徑安全 / 伺服器溝通在 svg-style-lib.js；
+ * DOM 行為：app 主題切換（預覽 深/淺 跟隨）、i18n、上傳 / 拖拉 / 清空、選檔→預覽（sandbox iframe）、
+ * 替換 <style>（手動）、下載目前檔。
+ * 自動適配（autoAdapt）/ @media 改寫 / sandbox 組裝 / 路徑安全 / 伺服器溝通在 svg-style-lib.js；
  * i18n 引擎在 i18n.js，語言字典在 locales/<code>.js。
  *
  * 依賴（皆於 index.html 先載入）：jQuery / Materialize / Lodash / SvgStyleLib / I18n（+ locales）。
  *
  * 註：預覽用 **sandbox iframe**（`sandbox=""`，不給 allow-scripts）；上傳的 SVG 可能含 script，
- *     全 sandbox 渲染最安全（SVG 不需 script）。預覽內容＝lib.injectStyle（與後端 dist 逐字一致）。
+ *     全 sandbox 渲染最安全（SVG 不需 script）。預覽內容＝下載內容（皆走 processedCurrent()）。
  */
 
 (function () {
@@ -22,20 +22,22 @@
   var docBox = document.getElementById('ss-doc');
   var frame = document.getElementById('ss-frame');
   var docName = document.getElementById('ss-doc-name');
-  var docBadge = document.getElementById('ss-doc-badge');
   var previewMeta = document.getElementById('ss-meta');
   var sideNav = document.getElementById('side-nav');
   var dropOverlay = document.getElementById('drop-overlay');
   var filePicker = document.getElementById('file-picker');
   var downloadBtn = document.getElementById('setting-download');
-  var processBtn = document.getElementById('setting-process');
+  var replaceBtn = document.getElementById('setting-replace-style');
+  var styleBadge = document.getElementById('ss-style-badge');
 
   var state = {
     theme: 'dark',      // app 主題；預覽 深/淺 跟隨此值（side-tools display mode）
     current: null,      // 目前選的 src 連結（原始）
     name: '',
     srcText: '',        // 目前 src SVG 原文
-    styleText: '',      // svg-style.txt（注入樣板）
+    replaceText: '',    // svg-style-replace.txt（整段替換 <style> 用；內容待補）
+    hasStyle: false,    // 目前檔是否含 <style> 區塊（決定是否提供「替換」動作）
+    styleReplaced: false, // 目前檔是否切到「替換 <style>」檢視（預覽／下載皆跟隨）
     files: []
   };
 
@@ -64,6 +66,28 @@
     emptyState.style.display = show ? 'none' : '';
     document.body.classList.toggle('is-empty', !show);
     if (downloadBtn) downloadBtn.style.display = show ? 'flex' : 'none';
+    if (!show) {
+      state.hasStyle = false;
+      state.styleReplaced = false;
+      if (styleBadge) styleBadge.style.display = 'none';
+      if (replaceBtn) { replaceBtn.style.display = 'none'; replaceBtn.classList.remove('active'); }
+    }
+  }
+
+  /* ---------- 「替換 <style>」控制（偵測 → 徽章 + 按鈕 gate） ---------- */
+
+  // 依目前檔偵測結果更新 toolbar：徽章「含 <style>」/「無 <style>」**兩種都要顯示**；
+  // 「替換」鈕只在有 <style> 時出現。本函式於檔案載入後（doc 已顯示）呼叫，故一律顯示徽章。
+  function updateStyleControls() {
+    if (styleBadge) {
+      styleBadge.style.display = '';
+      styleBadge.textContent = I18n.t(state.hasStyle ? 'badge.hasStyle' : 'badge.noStyle');
+      styleBadge.classList.toggle('has', state.hasStyle);
+    }
+    if (replaceBtn) {
+      replaceBtn.style.display = state.hasStyle ? 'flex' : 'none';
+      replaceBtn.classList.toggle('active', state.styleReplaced);
+    }
   }
 
   // 「已執行」微回饋：icon 暫時變 check 800ms（家族 §5.5）
@@ -91,7 +115,12 @@
   /* ---------- 預覽渲染 ---------- */
 
   function processedCurrent() {
-    return L.injectStyle(state.srcText, state.styleText);   // == 後端 dist 內容
+    // 切到「替換 <style>」檢視時，整段替換既有 <style>（純前端、即時）；
+    // 否則走「自動適配」：依原圖顏色推導、生成相反主題的 @media 覆寫 + @media print 淺色並注入（palette-agnostic、雙向）。
+    if (state.styleReplaced && state.replaceText) {
+      return L.replaceStyleBlock(state.srcText, state.replaceText);
+    }
+    return L.autoAdapt(state.srcText);
   }
 
   function renderPreview() {
@@ -104,15 +133,22 @@
     var processed = processedCurrent();
     var previewSvg = L.buildPreviewSvg(processed, isLight);
     frame.srcdoc = L.buildSrcdoc(previewSvg, isLight);
-    previewMeta.textContent = I18n.t('meta.preview', {
+    var meta = I18n.t('meta.preview', {
       mode: I18n.t(isLight ? 'mode.light' : 'mode.dark'),
       a: state.srcText.length, b: processed.length
     });
+    if (state.styleReplaced) {
+      meta += '　·　' + I18n.t('meta.replaced');
+    } else {
+      // 自動適配：標示偵測到的原生主題（相反主題會被翻轉）。
+      meta += '　·　' + I18n.t('meta.native', { mode: I18n.t('mode.' + L.detectMode(state.srcText)) });
+    }
+    previewMeta.textContent = meta;
   }
 
   /* ---------- 選檔 / 載入 ---------- */
 
-  function loadAndShow(link, displayName, processed) {
+  function loadAndShow(link, displayName) {
     if (!L.isSafeLink(link)) {
       state.current = null; state.srcText = '';
       M.toast({ html: I18n.t('toast.badLink'), classes: 'red' });
@@ -121,15 +157,20 @@
     }
     state.current = link;
     state.name = displayName || L.basename(link);
+    state.styleReplaced = false;   // 切檔一律回到自動適配檢視
     document.title = state.name + ' | ' + I18n.t('title.suffix');
     docName.textContent = state.name;
     docName.title = state.name;
-    docBadge.style.display = processed ? '' : 'none';
     markActive(link);
     showDoc(true);
     showLoading();
     return L.fetchText(link)
-      .then(function (text) { state.srcText = text; renderPreview(); })
+      .then(function (text) {
+        state.srcText = text;
+        state.hasStyle = L.hasStyleBlock(text);   // 偵測：此 SVG 是否含 <style> 區塊
+        updateStyleControls();
+        renderPreview();
+      })
       .catch(function (err) {
         state.srcText = '';
         M.toast({ html: I18n.t('toast.loadFail', { n: state.name, m: err.message }), classes: 'red' });
@@ -154,12 +195,10 @@
     }
     sideNav.innerHTML = files.map(function (f) {
       var link = L.fileUrl(f.name);
-      var badge = f.processed ? '<span class="file-flag" title="' + _.escape(I18n.t('badge.processed')) + '">●</span>' : '';
       return '<li data-link="' + _.escape(link) + '">' +
-        '<a href="#!" class="file-item" data-name="' + _.escape(f.name) + '" data-processed="' + (f.processed ? 1 : 0) + '">' +
+        '<a href="#!" class="file-item" data-name="' + _.escape(f.name) + '">' +
         '<i class="material-icons">image</i>' +
         '<span style="flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _.escape(f.name) + '</span>' +
-        badge +
         '<span class="file-meta">' + L.formatSize(f.size) + '</span>' +
         '</a></li>';
     }).join('');
@@ -170,17 +209,12 @@
     return L.listFiles().then(function (files) {
       state.files = files;
       renderSideNav(files);
-      // 更新目前檔的「已處理」徽章
-      if (state.current) {
-        var cur = files.filter(function (f) { return L.fileUrl(f.name) === state.current; })[0];
-        docBadge.style.display = (cur && cur.processed) ? '' : 'none';
-      }
       if (selectName) {
         var hit = files.filter(function (f) { return f.name === selectName; })[0];
-        if (hit) return loadAndShow(L.fileUrl(hit.name), hit.name, hit.processed);
+        if (hit) return loadAndShow(L.fileUrl(hit.name), hit.name);
       }
       if (autoOpen && !state.current && files.length) {
-        return loadAndShow(L.fileUrl(files[0].name), files[0].name, files[0].processed);
+        return loadAndShow(L.fileUrl(files[0].name), files[0].name);
       }
     }).catch(function (err) {
       M.toast({ html: I18n.t('toast.listFail', { m: err.message }), classes: 'red' });
@@ -207,20 +241,23 @@
     chain.then(function () { return refreshFiles(lastName); });
   }
 
-  /* ---------- 批次處理 src → dist ---------- */
+  /* ---------- 替換目前檔的 <style> 區塊（手動、即時、純前端） ---------- */
 
-  function processAll() {
-    if (!state.files.length) { M.toast({ html: I18n.t('toast.noSrc'), classes: 'orange' }); return; }
-    L.processAll().then(function (d) {
-      M.toast({ html: I18n.t('toast.processed', { n: d.processed || 0 }), classes: 'green' });
-      setIconDone(processBtn);
-      return refreshFiles();   // 更新 processed 徽章
-    }).catch(function (err) {
-      M.toast({ html: I18n.t('toast.processFail', { m: err.message }), classes: 'red' });
-    });
+  // toggle：開啟＝預覽／下載改用「整段替換 <style>」結果；再點一次還原為注入檢視。
+  function toggleReplaceStyle() {
+    if (!state.current || !state.srcText) return;
+    if (!state.hasStyle) { M.toast({ html: I18n.t('toast.noStyle'), classes: 'orange' }); return; }
+    if (!state.styleReplaced && !state.replaceText) {
+      M.toast({ html: I18n.t('toast.noReplaceTpl'), classes: 'orange' });
+      return;
+    }
+    state.styleReplaced = !state.styleReplaced;
+    if (replaceBtn) replaceBtn.classList.toggle('active', state.styleReplaced);
+    renderPreview();
+    M.toast({ html: I18n.t(state.styleReplaced ? 'toast.styleReplaced' : 'toast.styleRestored'), classes: 'teal' });
   }
 
-  /* ---------- 下載目前檔（注入後＝dist 內容） ---------- */
+  /* ---------- 下載目前檔（＝processedCurrent()：自動適配後，或替換 <style> 後） ---------- */
 
   function downloadCurrent() {
     if (!state.current || !state.srcText) return;
@@ -258,6 +295,8 @@
   }
   function bindDragDrop() {
     var depth = 0;
+    // 預覽 iframe 以 CSS 設了永久 pointer-events:none（見 svg-style.css）——drop 會穿透
+    // iframe 落到父文件、冒泡到 window，故「快速直接拖到已顯示的 SVG 上」也能上傳（無時序漏洞）。
     window.addEventListener('dragenter', function (e) { if (!hasFiles(e)) return; e.preventDefault(); depth++; dropOverlay.classList.add('show'); });
     window.addEventListener('dragover', function (e) { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
     window.addEventListener('dragleave', function (e) { if (!hasFiles(e)) return; depth--; if (depth <= 0) { depth = 0; dropOverlay.classList.remove('show'); } });
@@ -279,7 +318,7 @@
   function onLangChanged() {
     renderSideNav(state.files);
     document.title = state.current ? (state.name + ' | ' + I18n.t('title.suffix')) : I18n.t('title.suffix');
-    if (state.current) renderPreview();   // meta 文字隨語系（SVG 內容是 data 不變）
+    if (state.current) { updateStyleControls(); renderPreview(); }   // 徽章 / meta 文字隨語系（SVG 內容是 data 不變）
   }
 
   /* ---------- 事件 ---------- */
@@ -288,8 +327,7 @@
     $(document).on('click', '#side-nav a.file-item', function (e) {
       e.preventDefault();
       var name = String($(this).data('name'));
-      var processed = String($(this).data('processed')) === '1';
-      loadAndShow(L.fileUrl(name), name, processed);
+      loadAndShow(L.fileUrl(name), name);
       var inst = M.Sidenav.getInstance(document.getElementById('slide-out'));
       if (inst && inst.isOpen) inst.close();
     });
@@ -305,7 +343,7 @@
     });
     document.getElementById('setting-mode').addEventListener('click', toggleTheme);
     document.getElementById('setting-lang').addEventListener('click', cycleLang);
-    document.getElementById('setting-process').addEventListener('click', processAll);
+    if (replaceBtn) replaceBtn.addEventListener('click', toggleReplaceStyle);   // null-safe：缺此鈕（如舊快取 HTML）也不致中斷後續綁定
     document.getElementById('setting-download').addEventListener('click', downloadCurrent);
     document.getElementById('setting-clear').addEventListener('click', clearFolder);
   }
@@ -327,14 +365,14 @@
     document.addEventListener('i18n:changed', onLangChanged);
     document.title = I18n.t('title.suffix');
 
+    bindDragDrop();   // 先綁全頁拖拉上傳——即使後續某個按鈕綁定意外丟例外，拖拉上傳仍可用
     bindEvents();
-    bindDragDrop();
 
-    // 先載入注入樣板，再抓清單（確保首次預覽用得到 styleText）
-    L.fetchStyle()
-      .then(function (txt) { state.styleText = txt; })
+    // 載入「替換用」樣板後抓清單。自動適配（autoAdapt）不需外部樣板、即時從 SVG 推導，故無需先載入。
+    L.fetchReplaceStyle()
+      .then(function (txt) { state.replaceText = txt; })
       .catch(function (err) {
-        M.toast({ html: I18n.t('toast.styleFail', { m: err.message }), classes: 'red' });
+        M.toast({ html: I18n.t('toast.replaceTplFail', { m: err.message }), classes: 'red' });
       })
       .then(function () { return refreshFiles(null, true); });
   });

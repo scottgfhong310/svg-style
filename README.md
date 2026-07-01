@@ -2,17 +2,18 @@
 
 **English** · [中文](README.zh-Hant.md) · [日本語](README.ja.md)
 
-A single-page tool that makes **dark-authored SVG diagrams light-mode adaptive**. Upload an `.svg`, and it injects a `<style>` block (from `svg-style.txt`) right after the opening `<svg>` tag — a `@media (prefers-color-scheme: light)` override that remaps the dark palette to light equivalents. Preview in a sandboxed iframe (force dark/light), then **Process** writes the styled output to `dist/`. Backed by a lightweight Express server (upload → process → clear).
+A single-page tool that makes **Claude-exported SVG diagrams adapt to both dark and light**. Upload an `.svg`, and it **auto-derives** the adaptation from the SVG's own colors: it detects the native theme, flips each color's lightness (hue preserved) for the opposite theme, and injects a `@media (prefers-color-scheme)` override plus an `@media print` (always-light) block. Preview in a sandboxed iframe (follows the theme), then **download** the adapted file to paste inline into your `.md`. Backed by a lightweight Express server (upload / list / clear).
 
-- 🎨 **Light-mode injection** — adds `@media (prefers-color-scheme: light)` overrides so a dark SVG self-adapts when viewed in light mode; the dark original is untouched
-- 👁️ **Sandboxed preview** — renders in an `<iframe sandbox>` (no `allow-scripts`); a Dark/Light segment **forces** the media query for preview, independent of the OS setting and of the app theme
+- 🎨 **Auto two-way adaptation (palette-agnostic)** — derives dark↔light from the SVG's own inline colors (HSL lightness flip, hue/saturation preserved); no hand-maintained palette map, and it works whether the SVG is light- or dark-native
+- 🖨️ **Always-light printing** — also emits an `@media print` block so the diagram prints light regardless of screen theme (needs the SVG embedded **inline**, not via `<img>`)
+- 👁️ **Sandboxed preview** — renders in an `<iframe sandbox>` (no `allow-scripts`); preview **follows the app theme** and forces the media query, independent of the OS setting
 - 📥 **Drag & drop upload** — drop `.svg` anywhere; stored as **src** (`public/upload/svg-style/`); same name overwrites
-- ⚙️ **Process src → dist** — server injects the style into every src SVG and writes to `dist/` (`public/upload/svg-style/dist/`); idempotent (won't double-inject)
-- 💾 **Download** the styled current file; 🗂️ file list with a "processed" flag; 🧹 clear (src + dist)
-- 🌗 **Light / Dark app theme** (separate from the SVG preview mode) · 🌐 **Multilingual UI** (繁體中文 / English / 日本語, default 繁體中文)
+- 🔁 **Replace `<style>` (optional)** — when an SVG ships its own `<style>` block, a side-tool can swap it for a template (`svg-style-replace.txt`)
+- 💾 **Download** the adapted current file; 🗂️ file list; 🧹 clear
+- 🌗 **Light / Dark app theme** (the SVG preview follows it) · 🌐 **Multilingual UI** (繁體中文 / English / 日本語, default 繁體中文)
 - 🛡️ **Path safety** — blocks `..`, backslashes, `javascript:` / `file:` schemes, protocol-relative `//`, non-allow-listed absolute paths
 
-> Pairs with the Claude-artifact tooling (e.g. [html-viewer](https://github.com/scottgfhong310/html-viewer)): Claude's dark SVG diagrams use a fixed palette, and `svg-style.txt` maps exactly that palette to light. Front-end libs (jQuery, Materialize, Lodash, Material Icons) load from CDN — no build step.
+> Pairs with the Claude-artifact tooling (e.g. [html-viewer](https://github.com/scottgfhong310/html-viewer)). Claude's SVG diagrams vary in palette and can be light- or dark-native; svg-style derives the adaptation from each SVG itself, so no fixed palette map is needed. Front-end libs (jQuery, Materialize, Lodash, Material Icons) load from CDN — no build step.
 
 ## Quick start
 
@@ -34,15 +35,15 @@ svg-style/
 ├── package.json
 ├── routes/
 │   ├── upload.js                   # POST /api/upload?folder=svg-style (multer, multi-file, overwrite) → src
-│   └── svg-style.js                # GET /files, POST /process (src→dist), POST /clear
+│   └── svg-style.js                # Thin backend: GET /files, POST /clear (color adaptation is front-end)
 └── public/
     ├── apps/svg-style/             # Front end (served at /apps/svg-style/)
     │   ├── index.html · svg-style.css · svg-style.js · svg-style-lib.js
-    │   ├── svg-style.txt           # injection template (front + back both read; preview === dist)
+    │   ├── svg-style-replace.txt   # optional "replace <style>" template (front-end fetch; placeholder)
     │   ├── materialize-dark.css · side-tool.css · thinking-dot.css
     │   ├── i18n.js · locales/{zh-Hant,en,ja}.js
     └── upload/svg-style/           # src (uploaded SVGs; git-ignored, one sample shipped)
-        └── dist/                   # processed outputs (created at runtime; git-ignored)
+        └── dist/                   # legacy outputs (no longer written; cleared by /clear; git-ignored)
 ```
 
 ## API
@@ -50,19 +51,26 @@ svg-style/
 | Method / Path | Description |
 |---|---|
 | `POST /api/upload?folder=svg-style` | Upload SVGs to src (form field `myFiles`, multi-file; overwrites) |
-| `GET /api/svg-style/files` | List src SVGs (each with a `processed` flag) |
-| `POST /api/svg-style/process` | Inject `svg-style.txt` into every src SVG → write to `dist/` |
-| `POST /api/svg-style/clear` | Delete all visible SVGs in src and dist |
+| `GET /api/svg-style/files` | List src SVGs (newest first) |
+| `POST /api/svg-style/clear` | Delete all visible SVGs in src (and any leftover dist) |
 
-Static: src `/upload/svg-style/<name>`, dist `/upload/svg-style/dist/<name>`. All responses use the `{ ok }` envelope.
+Static: src `/upload/svg-style/<name>`. All responses use the `{ ok }` envelope. Color adaptation runs entirely in the browser — there is no server-side processing endpoint.
 
 ## Core library (`SvgStyleLib`)
 
-Pure logic, no DOM. `injectStyle(svg, styleText)` (idempotent) is **byte-identical to the backend** so the preview equals the written `dist`. Also: `buildPreviewSvg` (force `@media`), `buildSrcdoc` (sandbox iframe HTML), `isSafeLink`, `isUploadable` (`.svg`), `fileUrl`/`distUrl`, `fetchText`/`fetchStyle`, `uploadFile`/`listFiles`/`processAll`/`clearFolder`, `formatSize`/`timestamp`.
+Pure logic, no DOM. The engine is `autoAdapt(svg)` — the single source for both preview and download:
+
+- `detectMode(svg)` — native theme from surface (rect/path…) fill lightness → `'light'` / `'dark'`
+- `buildAutoStyle(svg)` — scans inline paint colors and emits, for the opposite theme, per-color `@media (prefers-color-scheme)` overrides via HSL lightness flip (hue preserved), plus an `@media print` always-light block
+- `autoAdapt(svg)` — strips any prior auto block (idempotent) and injects a fresh one after `<svg>`
+- `buildPreviewSvg` (force `@media (prefers-color-scheme)` for preview), `buildSrcdoc` (sandbox iframe HTML)
+- `hasStyleBlock` / `replaceStyleBlock` (the optional "replace `<style>`" path)
+- `isSafeLink`, `isUploadable` (`.svg`), `fileUrl`, `fetchText`/`fetchReplaceStyle`, `uploadFile`/`listFiles`/`clearFolder`, `formatSize`/`timestamp`
 
 ## Notes
 
-- The override matches **exact `rgb(...)`** values inline in the SVG (Claude's dark diagram palette). SVGs using other colors / hex / named colors won't adapt — `svg-style.txt` is a curated map, edit it to extend.
+- Adaptation reads colors from **inline `style="…rgb()/#hex…"`** on elements (how Claude's diagrams express color). If an SVG's colors come from a class + `<style>` block instead, use the **Replace `<style>`** path. Presentation attributes (`fill="…"`) are not remapped.
+- The `@media print` always-light block only fires when the SVG is embedded **inline** (`<svg>…</svg>`) in the host document; via `<img>` the host's print media doesn't reach the SVG.
 - The front end calls APIs with **absolute paths**, so it must be served from the **site root** by this Node server. **Not GitHub-Pages-compatible.**
 - This app belongs to the **nodeapp WebApp family**; shared conventions live in [nodeapp-webapp-family](https://github.com/scottgfhong310/nodeapp-webapp-family).
 

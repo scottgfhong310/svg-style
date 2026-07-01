@@ -62,7 +62,8 @@
         <div class="ss-toolbar">
           <i class="material-icons ss-doc-icon">image</i>
           <div class="ss-title"><strong id="ss-doc-name"></strong></div>
-          <span id="ss-doc-badge" class="ss-badge" style="display:none;" data-i18n="badge.processed">Processed</span>
+          <!-- 偵測徽章：含/無 <style> 兩種都顯示；文字與 .has 由 svg-style.js 依偵測結果填入 -->
+          <span id="ss-style-badge" class="ss-badge ss-badge-style" style="display:none;"></span>
         </div>
         <!-- 預覽：sandbox iframe（sandbox=""，不給 allow-scripts）；srcdoc 由控制器以 lib 組裝 -->
         <iframe class="ss-frame" id="ss-frame" sandbox referrerpolicy="no-referrer" title="SVG preview"></iframe>
@@ -99,8 +100,9 @@
     <div id="setting-lang" class="side-tool" data-i18n-title="tool.lang" title="Language">
       <i class="material-icons">translate</i>
     </div>
-    <div id="setting-process" class="side-tool" data-i18n-title="tool.process" title="批次處理 src → dist">
-      <i class="material-icons">auto_fix_high</i>
+    <div id="setting-replace-style" class="side-tool" data-i18n-title="tool.replaceStyle"
+      title="替換 <style> 區塊" style="display:none">
+      <i class="material-icons">find_replace</i>
     </div>
     <div id="setting-download" class="side-tool" data-i18n-title="tool.download" title="下載目前檔" style="display:none">
       <i class="material-icons">file_download</i>

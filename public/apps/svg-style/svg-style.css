@@ -173,6 +173,17 @@ body.is-empty main {
   padding: 1px 8px;
 }
 
+/* 偵測徽章：含/無 <style> 兩種都顯示，皆屬資訊性提示（中性色，與「已處理」accent 區隔）。
+   預設（無 <style>）用 muted；含 <style> 以 .has 稍微提亮（text 色），讓「可替換」一眼可辨。 */
+.ss-toolbar .ss-badge-style {
+  color: var(--muted);
+  border-color: var(--border);
+}
+
+.ss-toolbar .ss-badge-style.has {
+  color: var(--text);
+}
+
 .ss-frame {
   display: block;
   width: 100%;
@@ -181,6 +192,10 @@ body.is-empty main {
   border-top: 0;
   border-radius: 0 0 10px 10px;
   background: var(--surface-2);
+  /* 預覽為唯讀：永久關閉指標事件，讓「拖拉檔案」能穿透 iframe 落到父頁。
+     iframe 是另一份 sandbox 文件，會攔截落在其上的 drag/drop；若只在 dragenter 時才關，
+     「快速直接拖到圖上」的第一個事件已落入 iframe，父頁來不及關 → 無法上傳。永久關閉才無時序漏洞。 */
+  pointer-events: none;
 }
 
 .ss-meta {
@@ -288,14 +303,6 @@ body.is-empty main {
   white-space: nowrap;
   flex: 0 0 auto;
   opacity: .8;
-}
-
-/* 已處理（dist 已有）小圓點 */
-.file-flag {
-  flex: 0 0 auto;
-  color: var(--accent) !important;
-  font-size: .7rem;
-  line-height: 1;
 }
 
 /* ===== 載入動畫 ===== */
