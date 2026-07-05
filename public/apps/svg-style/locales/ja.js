@@ -17,6 +17,7 @@ I18n.register('ja', {
   'tool.menu': 'ファイル一覧',
   'tool.mode': 'ライト / ダーク切替',
   'tool.lang': '言語',
+  'toast.lang': '{name} に切り替えました',
   'tool.replaceStyle': 'SVG 内の <style> ブロックを置換',
   'tool.download': '現在のファイルをダウンロード（適応済み）',
   'tool.clear': 'src / dist を空にする',

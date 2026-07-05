@@ -17,6 +17,7 @@ I18n.register('en', {
   'tool.menu': 'File list',
   'tool.mode': 'Toggle light / dark',
   'tool.lang': 'Language',
+  'toast.lang': 'Switched to {name}',
   'tool.replaceStyle': 'Replace the <style> block in the SVG',
   'tool.download': 'Download current (adapted)',
   'tool.clear': 'Clear src / dist',

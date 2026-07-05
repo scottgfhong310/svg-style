@@ -17,6 +17,7 @@ I18n.register('zh-Hant', {
   'tool.menu': '檔案清單',
   'tool.mode': '切換 light / dark',
   'tool.lang': '語言',
+  'toast.lang': '已切換為 {name}',
   'tool.replaceStyle': '替換 SVG 內的 <style> 區塊',
   'tool.download': '下載目前檔（適配後）',
   'tool.clear': '清空 src / dist',
