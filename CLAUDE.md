@@ -11,7 +11,7 @@
 
 ```
 app.js                              # Express 入口：port 3000；/ → 302 /apps/svg-style/
-routes/upload.js                    # POST /api/upload?folder=svg-style（共用最小版）→ src
+routes/upload.js                    # POST /api/upload?folder=svg-style（共用最小版；含檔名消毒 sanitizeUploadName，§3.4）→ src
 routes/svg-style.js                 # 薄後端：GET /files、POST /clear（顏色適配全在前端；/process 已退役）
 public/apps/svg-style/              # 前端（服務於 /apps/svg-style/）
 ├─ index.html · svg-style.css · svg-style.js · svg-style-lib.js
