@@ -16,7 +16,7 @@ routes/svg-style.js                 # 薄後端：GET /files、POST /clear（顏
 public/apps/svg-style/              # 前端（服務於 /apps/svg-style/）
 ├─ index.html · svg-style.css · svg-style.js · svg-style-lib.js
 ├─ svg-style-replace.txt            # 替換樣板（整段換掉 SVG 自帶 <style>；純前端 fetch；placeholder，內容待補）
-├─ materialize-dark.css · side-tool.css · thinking-dot.css
+├─ materialize-dark.css · side-tool.css · thinking-dot.css   # thinking-dot.css＝共用載入點 utility（權威＝獨立 repo thinking-dot；載入點預設 2026-07-19 隨權威統一 14px→27px/2.1s）
 ├─ i18n.js · locales/{zh-Hant,en,ja}.js
 public/upload/svg-style/            # src（上傳的 SVG；不進版控，附一個 sample）
 └─ dist/                            # 舊產出（本版不再寫入；/clear 仍會清殘留）
