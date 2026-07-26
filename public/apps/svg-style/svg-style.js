@@ -90,14 +90,8 @@
     }
   }
 
-  // 「已執行」微回饋：icon 暫時變 check 800ms（家族 §5.5）
-  function setIconDone(el) {
-    var i = el && el.querySelector('i');
-    if (!i) return;
-    var orig = i.textContent;
-    i.textContent = 'check';
-    setTimeout(function () { i.textContent = orig; }, 800);
-  }
+  // 「已執行」微回饋：icon 暫時變 check 800ms（家族共用 side-tool.js，§5.5）
+  var setIconDone = window.SideTool.setIconDone;
 
   /* ---------- loading ---------- */
   var loadingTimer = null;
