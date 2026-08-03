@@ -30,6 +30,7 @@ I18n.register('en', {
   'toast.noStyle': 'This SVG has no &lt;style&gt; block to replace',
   'toast.noReplaceTpl': 'Replacement template not loaded yet',
   'toast.uploaded': 'Uploaded: {n}',
+  'toast.uploadedRenamed': 'Name already exists — saved as: {n}',
   'toast.uploadFail': 'Upload failed: {n} ({m})',
   'toast.listFail': 'Failed to load file list: {m}',
   'toast.cleared': 'Cleared {n} file(s)',

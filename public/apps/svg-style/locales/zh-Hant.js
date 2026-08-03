@@ -30,6 +30,7 @@ I18n.register('zh-Hant', {
   'toast.noStyle': '此 SVG 沒有 &lt;style&gt; 區塊可替換',
   'toast.noReplaceTpl': '替換樣板尚未載入',
   'toast.uploaded': '已上傳：{n}',
+  'toast.uploadedRenamed': '同名已存在，已存為：{n}',
   'toast.uploadFail': '上傳失敗：{n}（{m}）',
   'toast.listFail': '讀取檔案清單失敗：{m}',
   'toast.cleared': '已清空 {n} 個檔案',
