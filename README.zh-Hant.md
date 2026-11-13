@@ -69,7 +69,7 @@ svg-style/
 
 ## 備註
 
-- 適配讀取元素上 **inline `style="…rgb()/#hex…"`** 的顏色（Claude 圖表的配色方式）。若 SVG 顏色來自 class + `<style>`，改走**替換 `<style>`** 路徑。presentation 屬性（`fill="…"`）不對映。
+- 適配讀取元素上 **inline `style="…rgb()/#hex…"`** 的顏色（Claude 圖表的配色方式）。若 SVG 顏色來自 class + `<style>`，改走**替換 `<style>`** 路徑。帶顏色值的 presentation 屬性（`fill="#5C7894"`）也會對映；用 `currentColor` 畫的圖，另翻轉根元素 `style="color:…"` 的前景色。
 - `@media print` 一律淺色只在 SVG 以 **inline**（`<svg>…</svg>`）嵌入時生效；以 `<img>` 引用時 host 的 print media 不會傳進 SVG。
 - 前端以**絕對路徑**呼叫 API，須由本 Node 伺服器從**站台根**提供。**不相容 GitHub Pages。**
 - 本 app 屬 **nodeapp WebApp 家族**；共同規範見 [nodeapp-webapp-family](https://github.com/scottgfhong310/nodeapp-webapp-family)。

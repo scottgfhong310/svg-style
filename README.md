@@ -69,7 +69,7 @@ Pure logic, no DOM. The engine is `autoAdapt(svg)` — the single source for bot
 
 ## Notes
 
-- Adaptation reads colors from **inline `style="…rgb()/#hex…"`** on elements (how Claude's diagrams express color). If an SVG's colors come from a class + `<style>` block instead, use the **Replace `<style>`** path. Presentation attributes (`fill="…"`) are not remapped.
+- Adaptation reads colors from **inline `style="…rgb()/#hex…"`** on elements (how Claude's diagrams express color). If an SVG's colors come from a class + `<style>` block instead, use the **Replace `<style>`** path. Presentation attributes with a color value (`fill="#5C7894"`) are remapped too; for SVGs drawn with `currentColor`, the root `style="color:…"` foreground is flipped as well.
 - The `@media print` always-light block only fires when the SVG is embedded **inline** (`<svg>…</svg>`) in the host document; via `<img>` the host's print media doesn't reach the SVG.
 - The front end calls APIs with **absolute paths**, so it must be served from the **site root** by this Node server. **Not GitHub-Pages-compatible.**
 - This app belongs to the **nodeapp WebApp family**; shared conventions live in [nodeapp-webapp-family](https://github.com/scottgfhong310/nodeapp-webapp-family).

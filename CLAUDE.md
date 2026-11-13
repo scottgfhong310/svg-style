@@ -78,6 +78,6 @@ bash scripts/sync-copies.sh
 - **side-tool**：`#setting-menu` / `#setting-replace-style`（`find_replace`，替換 `<style>`；只在目前檔有 `<style>` 時顯示，toggle `.active`）/ `#setting-download`（只在開檔時顯示）/ `#setting-clear`（清空，hover 轉紅）/ `#setting-mode`（app 主題）/ `#setting-lang`；〔正統〕flex `.side-tools`，**chrome 墊底**（§5.5 排列順序，2026-07-26 收斂）。（`#setting-process` 已隨 `/process` 退役移除。）
 - **i18n**：`i18n.js` + `locales/*.js`，`data-i18n`，預設 `zh-Hant`。SVG 內容是 **data，永不翻譯**。
 - **安全**：sandbox `""` 渲染（擋 SVG 內 script）；上傳白名單 `.svg`；`isSafeLink`；後端操作目標寫死（src/dist）、`{ ok }` 信封、`confirm`；jQuery 3.7.1、後端不依賴 lodash。
-- **限制**：`autoAdapt` 掃 **inline `style="…rgb()/#hex…"`** 的顏色；若 SVG 顏色來自 class + `<style>`（非 inline），改走「替換 `<style>`」路徑。HSL 明度翻轉對中間明度（L≈0.5）變化小。`@media print` 淺色需 SVG **inline 嵌入**才生效（`<img>` 引用時 host print media 不傳進 SVG）。
+- **限制**：`autoAdapt` 掃 **inline `style="…rgb()/#hex…"`** 與**呈現屬性 `fill="#hex"`** 的顏色（`currentColor` 圖另收根元素的 `color:`，見 DESIGN §6 第 12 條）；若 SVG 顏色來自 class + `<style>`（非 inline），改走「替換 `<style>`」路徑。HSL 明度翻轉對中間明度（L≈0.5）變化小。`@media print` 淺色需 SVG **inline 嵌入**才生效（`<img>` 引用時 host print media 不傳進 SVG）。
 - **InProgress 鏡像**：同名前端回灌到 `InProgress/public/apps/svg-style/`，route 掛在 InProgress 的 `/api/svg-style`；上傳沿用 InProgress 共用 `/api/upload?folder=svg-style`（雙鍵 `{ ok, success }`，前端查 `resp.ok`）。
 - **preview**：`GitHub/.claude/launch.json` 有一筆 `svg-style`（`node svg-style/app.js`，port 3000）。

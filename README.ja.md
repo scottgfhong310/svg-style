@@ -69,7 +69,7 @@ svg-style/
 
 ## 備考
 
-- 適応は要素の **インライン `style="…rgb()/#hex…"`** の色を読み取ります（Claude の図の配色方式）。色が class + `<style>` 由来の場合は **`<style>` 置換**経路を使用。presentation 属性（`fill="…"`）は写像しません。
+- 適応は要素の **インライン `style="…rgb()/#hex…"`** の色を読み取ります（Claude の図の配色方式）。色が class + `<style>` 由来の場合は **`<style>` 置換**経路を使用。色値を持つ presentation 属性（`fill="#5C7894"`）も写像します。`currentColor` で描かれた図は、ルート要素の `style="color:…"` の前景色も反転します。
 - `@media print` の常時ライトは、SVG を **inline**（`<svg>…</svg>`）で埋め込んだ場合のみ有効。`<img>` 参照ではホストの print media が SVG に届きません。
 - フロントエンドは API を**絶対パス**で呼ぶため、本 Node サーバが**サイトルート**から配信する必要があります。**GitHub Pages 非対応。**
 - 本アプリは **nodeapp WebApp ファミリー**に属します。共通規約は [nodeapp-webapp-family](https://github.com/scottgfhong310/nodeapp-webapp-family) を参照。

@@ -167,36 +167,66 @@
     return 'rgb(' + rgb.r + ', ' + rgb.g + ', ' + rgb.b + ')';
   }
 
-  // 掃描每個帶 inline style 的元素，收集 { tag, prop, raw, color }；raw＝可直接放進 [style*=] 的原樣子字串。
+  // 收集 paint 顏色 { tag, prop, src, raw, value, color, sel }，兩種寫法都認：
+  //   - inline style：`style="fill:rgb(…)"` → src 'style'，sel ＝ [style*="fill:rgb(…)"]（raw＝原樣子字串）
+  //   - 呈現屬性：`fill="#5C7894"` → src 'attr'，sel ＝ [fill="#5C7894"]（CSS 規則本來就蓋得過呈現屬性）
+  // `color` 只在 SVG 用到 currentColor 時才收：Claude 另一種匯出格式把前景色寫在根 <svg style="color:…">、
+  // 文字與線條全是 currentColor；而舊格式的 `;color:rgb(…)` 是 computed style 殘留、沒有人引用
+  // （收了只會多出無效規則，且讓舊檔的輸出跟著變）。
   function collectPaints(svg) {
-    var s = String(svg), elRe = /<([a-zA-Z][\w:-]*)\b[^>]*?\bstyle\s*=\s*"([^"]*)"/g, em;
-    var paintRe = /(fill|stroke|stop-color|flood-color)\s*:\s*(rgba?\([^)]*\)|#[0-9a-fA-F]{3,8})/gi;
+    var s = String(svg), em, am, pm;
+    var props = 'fill|stroke|stop-color|flood-color' + (/currentColor/i.test(s) ? '|color' : '');
+    var colorRe = '(rgba?\\([^)]*\\)|#[0-9a-fA-F]{3,8})';
+    // 前面必須是開頭或分隔符：否則 `color` 會在 `stop-color` 裡面再命中一次。
+    var styleRe = new RegExp('(^|[;\\s])((' + props + ')\\s*:\\s*' + colorRe + ')', 'gi');
+    var attrRe = new RegExp('\\s(' + props + ')\\s*=\\s*"' + colorRe + '"', 'gi');
+    var elRe = /<([a-zA-Z][\w:-]*)\b([^>]*)>/g;
     var list = [], seen = {};
+    function add(tag, prop, src, raw, value, sel) {
+      var col = parseColor(value);
+      if (!col) return;
+      var key = tag + '|' + sel;
+      if (seen[key]) return; seen[key] = 1;
+      list.push({ tag: tag, prop: prop, src: src, raw: raw, value: value, color: col, sel: sel });
+    }
     while ((em = elRe.exec(s))) {
-      var tag = em[1].toLowerCase(), style = em[2], pm;
-      paintRe.lastIndex = 0;
-      while ((pm = paintRe.exec(style))) {
-        var prop = pm[1].toLowerCase(), col = parseColor(pm[2]);
-        if (!col) continue;
-        var key = tag + '|' + pm[0];
-        if (seen[key]) continue; seen[key] = 1;
-        list.push({ tag: tag, prop: prop, raw: pm[0], value: pm[2], color: col });   // raw 例：fill:rgb(12, 68, 124)；value＝顏色值
+      var tag = em[1].toLowerCase(), attrs = em[2];
+      var sm = attrs.match(/\bstyle\s*=\s*"([^"]*)"/);
+      if (sm) {
+        styleRe.lastIndex = 0;
+        while ((pm = styleRe.exec(sm[1]))) {   // pm[2] 例：fill:rgb(12, 68, 124)
+          add(tag, pm[3].toLowerCase(), 'style', pm[2], pm[4], '[style*="' + pm[2].replace(/"/g, '\\"') + '"]');
+        }
+      }
+      attrRe.lastIndex = 0;
+      while ((am = attrRe.exec(attrs))) {
+        add(tag, am[1].toLowerCase(), 'attr', am[0].trim(), am[2], '[' + am[1] + '="' + am[2] + '"]');
       }
     }
     return list;
   }
 
-  // 偵測原生主題：以「面板類」(rect/path…) 的 fill 平均明度判斷（亮→light、暗→dark）；無面板則退用所有 fill。
+  function avgL(list) {
+    var sum = 0;
+    list.forEach(function (p) { sum += rgbToHsl(p.color.r, p.color.g, p.color.b).l; });
+    return sum / list.length;
+  }
+
+  // 偵測原生主題（亮→light、暗→dark），證據依序：
+  //   1. inline style 的「面板類」(rect/path…) fill 平均明度（原本的判法，舊格式都落在這裡）
+  //   2. currentColor 的前景色（`color`）：前景亮＝深色底，反之亦然。這種格式的面板 fill 多半是
+  //      低 fill-opacity 的色調（例：#5C7894 × .13），它的明度說明不了底色，所以排在前景之後
+  //   3. 任何 fill（style 或屬性）
   function detectMode(svg) {
-    var paints = collectPaints(svg), ls = [], i, p, hsl;
-    for (i = 0; i < paints.length; i++) {
-      p = paints[i];
-      if (p.prop === 'fill' && SURFACE_TAGS[p.tag] && p.color.a !== 0) { hsl = rgbToHsl(p.color.r, p.color.g, p.color.b); ls.push(hsl.l); }
-    }
-    if (!ls.length) for (i = 0; i < paints.length; i++) { p = paints[i]; if (p.prop === 'fill' && p.color.a !== 0) { hsl = rgbToHsl(p.color.r, p.color.g, p.color.b); ls.push(hsl.l); } }
-    if (!ls.length) return 'dark';
-    var avg = ls.reduce(function (a, b) { return a + b; }, 0) / ls.length;
-    return avg > 0.5 ? 'light' : 'dark';
+    var paints = collectPaints(svg), pick;
+    function opaque(p) { return p.color.a !== 0; }
+    pick = paints.filter(function (p) { return p.src === 'style' && p.prop === 'fill' && SURFACE_TAGS[p.tag] && opaque(p); });
+    if (pick.length) return avgL(pick) > 0.5 ? 'light' : 'dark';
+    pick = paints.filter(function (p) { return p.prop === 'color' && opaque(p); });
+    if (pick.length) return avgL(pick) > 0.5 ? 'dark' : 'light';
+    pick = paints.filter(function (p) { return p.prop === 'fill' && opaque(p); });
+    if (pick.length) return avgL(pick) > 0.5 ? 'light' : 'dark';
+    return 'dark';
   }
 
   // 依原圖顏色生成「相反主題」的 @media 覆寫 <style>（帶 data-svg-style-auto 標記）。無可處理顏色則回空字串。
@@ -206,8 +236,8 @@
     var native = detectMode(svg), opp = native === 'light' ? 'dark' : 'light';
     var screenRules = [], printRules = [], seen = {};
     paints.forEach(function (p) {
-      if (seen[p.raw]) return; seen[p.raw] = 1;   // 同一 prop:color 一條即可（與 element type 無關）
-      var sel = '[style*="' + p.raw.replace(/"/g, '\\"') + '"]';
+      var sel = p.sel;
+      if (seen[sel]) return; seen[sel] = 1;   // 同一選擇器一條即可（與 element type 無關）
       var flipped = flipColor(p.color);
       screenRules.push('      ' + sel + ' { ' + p.prop + ': ' + flipped + ' !important; }');
       // 列印一律淺色（不論螢幕主題）：原生淺色→沿用原值；原生深色→用翻轉後的淺色值。
